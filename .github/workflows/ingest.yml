@@ -19,7 +19,44 @@ jobs:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
           DATABRICKS_VOLUME_PATH: ${{ secrets.DATABRICKS_VOLUME_PATH }}
+          DATABRICKS_WAREHOUSE_HTTP_PATH: ${{ secrets.DATABRICKS_WAREHOUSE_HTTP_PATH }}
         run: |
-          python ingestion/ingest_prices.py
-          python ingestion/ingest_news.py
-          python ingestion/upload_to_volume.py
+          set -e  # Fail fast on any error
+          
+          retry_with_backoff() {
+            local max_attempts=3
+            local timeout=15
+            local attempt=1
+            local exitCode=0
+            
+            while [[ $attempt -le $max_attempts ]]; do
+              "$@"
+              exitCode=$?
+              
+              if [[ $exitCode -eq 0 ]]; then
+                return 0
+              fi
+              
+              echo "Command failed. Retrying in $timeout seconds... (Attempt $attempt of $max_attempts)"
+              sleep $timeout
+              attempt=$(( attempt + 1 ))
+              timeout=$(( timeout * 2 ))
+            done
+            
+            echo "Command failed after $max_attempts attempts."
+            exit $exitCode
+          }
+
+          echo "Ingesting Prices..."
+          retry_with_backoff python ingestion/ingest_prices.py
+          
+          echo "Ingesting News..."
+          retry_with_backoff python ingestion/ingest_news.py
+          
+          echo "Uploading to Databricks Volume..."
+          retry_with_backoff python ingestion/upload_to_volume.py
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "::error::Ingestion workflow failed! Please check the logs."
