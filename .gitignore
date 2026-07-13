@@ -17,3 +17,5 @@ landing_data/
 .vscode/
 *.pyc
 __pycache__/
+
+issues
