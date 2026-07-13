@@ -1,0 +1,19 @@
+# Virtual environment
+venv/
+.venv/
+Env/
+env/
+
+# Sensitive configuration files
+.env
+dashboard/.streamlit/secrets.toml
+
+# Local landing data
+landing_data/
+
+# OS/IDE metadata
+.DS_Store
+.idea/
+.vscode/
+*.pyc
+__pycache__/

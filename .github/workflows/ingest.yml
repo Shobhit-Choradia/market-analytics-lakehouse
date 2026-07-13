@@ -1,0 +1,25 @@
+name: Daily Market Data Ingestion
+on:
+  schedule:
+    - cron: "30 22 * * 1-5"   # ~30 min after US market close, weekdays
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r ingestion/requirements.txt
+      - name: Run ingestion
+        env:
+          MARKETAUX_API_KEY: ${{ secrets.MARKETAUX_API_KEY }}
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+          DATABRICKS_VOLUME_PATH: ${{ secrets.DATABRICKS_VOLUME_PATH }}
+        run: |
+          python ingestion/ingest_prices.py
+          python ingestion/ingest_news.py
+          python ingestion/upload_to_volume.py
